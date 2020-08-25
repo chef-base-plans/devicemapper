@@ -15,6 +15,7 @@ pkg_build_deps=(
 pkg_deps=(
   core/glibc
   core/libaio
+  core/busybox-static
 )
 pkg_lib_dirs=(lib)
 pkg_include_dirs=(include)
