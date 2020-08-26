@@ -26,6 +26,13 @@ control 'core-plans-devicemapper-works' do
     its('stderr') { should be_empty }
   end   
 
+  # ensure all busybox-static binaries are also on the PATH; otherwise
+  # fsadm fails
+  describe command("hab pkg binlink core/busybox-static") do
+    its('exit_status') { should eq 0 }
+    its('stdout') { should_not be_empty }
+  end   
+
   plan_pkg_version = plan_installation_directory.stdout.split("/")[5]
   full_suite = {
     "blkdeactivate" => {
