@@ -23,34 +23,25 @@ control 'core-plans-devicemapper-works' do
   describe plan_installation_directory do
     its('exit_status') { should eq 0 }
     its('stdout') { should_not be_empty }
-    its('stderr') { should be_empty }
-  end   
-
-  # ensure all busybox-static binaries are also on the PATH; otherwise
-  # fsadm fails
-  describe command("hab pkg binlink core/busybox-static") do
-    its('exit_status') { should eq 0 }
-    its('stdout') { should_not be_empty }
   end   
 
   plan_pkg_version = plan_installation_directory.stdout.split("/")[5]
   full_suite = {
     "blkdeactivate" => {
+      command_suffix: "-h",
       command_output_pattern: /blkdeactivate\s+\[options\]\s+\[device...\]/
     },
     "dmsetup" => {
-      io: "stderr", 
-      command_suffix: "help", 
+      command_suffix: "help 2>&1", 
       command_output_pattern: /Usage:\s+dmsetup\s+\[--version\]/
     },
     "dmstats" => {
-      io: "stderr", 
-      command_suffix: "help", 
+      command_suffix: "help 2>&1", 
       command_output_pattern: /Usage:\s+dmstats\s+\[-h\|--help\]/
     },
     "fsadm" => {
-      command_prefix: "hab pkg exec #{plan_origin}/#{plan_name}", 
-      command_suffix: "--help", 
+      command_prefix: "hab pkg exec #{plan_origin}/#{plan_name} --", 
+      command_suffix: "--help 2>&1", 
       command_output_pattern: /fsadm: Utility to resize or check the filesystem on a device/
     },
     "lvchange" => {},
@@ -65,8 +56,8 @@ control 'core-plans-devicemapper-works' do
     "lvmconfig" => {},
     "lvmdiskscan" => {},
     "lvmdump" => {
-      command_prefix: "hab pkg exec #{plan_origin}/#{plan_name}", 
-      command_suffix: "-h", 
+      command_prefix: "hab pkg exec #{plan_origin}/#{plan_name} --", 
+      command_suffix: "-h 2>&1", 
       command_output_pattern: /lvmdump\s+\[options\]/,
       exit_pattern: /^[^0]$/,
     },
@@ -116,16 +107,14 @@ control 'core-plans-devicemapper-works' do
   
   # over-ride the defaults below with (command_suffix:, io:, etc)
   subset.each do |binary_name, value|
-    # command_prefix = value[:command_prefix] || "echo '{\"key\":\"value\"}' | "
     command_prefix = value[:command_prefix] || ""
     command_suffix = value[:command_suffix] || "--help"
     command_output_pattern = value[:command_output_pattern] || /#{binary_name} -/ 
     exit_pattern = value[:exit_pattern] || /^0$/ # use /^[^0]$/ for non-zero exit status
-    io = value[:io] || "stdout"
     command_full_path = File.join(plan_installation_directory.stdout.strip, "sbin", binary_name)
     describe bash("#{command_prefix} #{command_full_path} #{command_suffix}") do
       its('exit_status') { should cmp exit_pattern }
-      its(io) { should match command_output_pattern }
+      its("stdout") { should match command_output_pattern }
     end
   end
   
